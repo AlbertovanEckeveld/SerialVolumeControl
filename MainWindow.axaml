@@ -1,0 +1,27 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="SerialVolumeControl.MainWindow"
+        Title="SerialVolumeControl">
+	<StackPanel Margin="10" Spacing="10">
+		<StackPanel Orientation="Horizontal" Spacing="10">
+			<ComboBox Name="AppComboBox1" Width="200"/>
+			<Slider Name="VolumeSlider1" Minimum="0" Maximum="100" Width="300"/>
+		</StackPanel>
+		<StackPanel Orientation="Horizontal" Spacing="10">
+			<ComboBox Name="AppComboBox2" Width="200"/>
+			<Slider Name="VolumeSlider2" Minimum="0" Maximum="100" Width="300"/>
+		</StackPanel>
+		<StackPanel Orientation="Horizontal" Spacing="10">
+			<ComboBox Name="AppComboBox3" Width="200"/>
+			<Slider Name="VolumeSlider3" Minimum="0" Maximum="100" Width="300"/>
+		</StackPanel>
+		<StackPanel Orientation="Horizontal" Spacing="10">
+			<ComboBox Name="AppComboBox4" Width="200"/>
+			<Slider Name="VolumeSlider4" Minimum="0" Maximum="100" Width="300"/>
+		</StackPanel>
+		<StackPanel Orientation="Horizontal" Spacing="10">
+			<ComboBox Name="AppComboBox5" Width="200"/>
+			<Slider Name="VolumeSlider5" Minimum="0" Maximum="100" Width="300"/>
+		</StackPanel>
+	</StackPanel>
+</Window>
