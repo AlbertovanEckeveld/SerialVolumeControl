@@ -13,9 +13,14 @@ public partial class MainWindow : Window
     private readonly List<ComboBox> _appComboBoxes;
     private readonly List<Slider> _volumeSliders;
 
+    private SerialReader _reader = new SerialReader();
+
     public MainWindow()
     {
         InitializeComponent();
+
+        PortComboBox.ItemsSource = System.IO.Ports.SerialPort.GetPortNames();
+        ConnectButton.Click += (_, _) => Connect();
 
         _appComboBoxes = new List<ComboBox>
         {
@@ -64,6 +69,14 @@ public partial class MainWindow : Window
                     }
                 }
             };
+        }
+    }
+
+    private void Connect()
+    {
+        if (PortComboBox.SelectedItem is string portName)
+        {
+            _reader.Connect(portName);
         }
     }
 }

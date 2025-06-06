@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO.Ports;
 
-namespace SerialVolumeControl
+namespace SerialVolumeControl.Services
 {
     public class SerialReader
     {

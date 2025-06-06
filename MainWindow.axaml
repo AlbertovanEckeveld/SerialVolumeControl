@@ -3,6 +3,8 @@
         x:Class="SerialVolumeControl.MainWindow"
         Title="SerialVolumeControl">
 	<StackPanel Margin="10" Spacing="10">
+		<ComboBox Name="PortComboBox" Width="200" />
+		<Button Name="ConnectButton" Content="Connect" Width="100" Margin="0,10,0,0"/>
 		<StackPanel Orientation="Horizontal" Spacing="10">
 			<ComboBox Name="AppComboBox1" Width="200"/>
 			<Slider Name="VolumeSlider1" Minimum="0" Maximum="100" Width="300"/>
