@@ -34,6 +34,7 @@ Send slider values as serial data (0-1023 per slider) to the PC.
 - [.NET 9 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/9.0)
 - [Avalonia UI](https://avaloniaui.net/) (handled via NuGet)
 - [NAudio](https://github.com/naudio/NAudio) (for Windows audio control, handled via NuGet)
+- [Mixer Pc volumes - Deej](https://www.thingiverse.com/thing:6548671)]
 - A compatible serial device (e.g., Arduino with potentiometers/sliders)
 
 ### Installation
