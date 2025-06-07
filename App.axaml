@@ -1,5 +1,6 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:tray="clr-namespace:Avalonia.Controls;assembly=Avalonia.Controls"
              x:Class="SerialVolumeControl.App"
              RequestedThemeVariant="Default">
              <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
@@ -7,4 +8,7 @@
     <Application.Styles>
         <FluentTheme />
     </Application.Styles>
+	<!--	<tray:TrayIcon x:Name="AppTrayIcon"
+                 IconSource="avares://YourAssemblyName/Assets/trayicon.ico"
+                 ToolTipText="SerialVolumeControl" /> -->
 </Application>

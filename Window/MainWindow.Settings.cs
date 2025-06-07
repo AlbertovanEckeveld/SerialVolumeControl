@@ -1,11 +1,12 @@
 
-using System;
-using System.IO;
-using System.Text.Json;
-using System.Collections.Generic;
-
-using SerialVolumeControl.Models;
 using SerialVolumeControl.Helpers;
+using SerialVolumeControl.Models;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Text.Json;
 
 namespace SerialVolumeControl
 {
@@ -72,5 +73,121 @@ namespace SerialVolumeControl
                 Console.WriteLine($"Error loading settings: {ex}");
             }
         }
+        /// <summary>
+        /// Enables or disables automatic startup of the application when the system starts,
+        /// depending on the operating system (Windows, Linux, or macOS).
+        /// </summary>
+        /// <param name="enable">
+        /// If <c>true</c>, configures the system to start the application on login/startup;
+        /// if <c>false</c>, removes the auto-start configuration.
+        /// </param>
+        /// <remarks>
+        /// - **Windows**: Creates or removes a shortcut (.lnk) in the user's Startup folder.
+        /// - **Linux**: Writes or deletes a .desktop file in ~/.config/autostart.
+        /// - **macOS**: Creates or removes a LaunchAgent .plist file in ~/Library/LaunchAgents.
+        ///
+        /// Errors during file or shortcut creation are caught and logged to the console.
+        /// </remarks>
+        /// <example>
+        /// Enable auto-start:
+        /// <code>
+        /// SetAutoStart(true);
+        /// </code>
+        /// Disable auto-start:
+        /// <code>
+        /// SetAutoStart(false);
+        /// </code>
+        /// </example>
+        /// <exception cref="Exception">
+        /// Thrown if WScript.Shell is not available on Windows when trying to create the shortcut.
+        /// </exception>
+        public static void SetAutoStart(bool enable)
+        {
+            string exePath = Assembly.GetEntryAssembly()!.Location;
+            string appName = "SerialVolumeControl";
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                string startupFolder = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
+                string shortcutPath = Path.Combine(startupFolder, $"{appName}.lnk");
+
+                if (enable)
+                {
+                    try
+                    {
+                        Type? t = Type.GetTypeFromProgID("WScript.Shell");
+                        if (t == null) throw new Exception("WScript.Shell not available");
+                        dynamic shell = Activator.CreateInstance(t)!;
+                        var shortcut = shell.CreateShortcut(shortcutPath);
+                        shortcut.TargetPath = exePath;
+                        shortcut.WorkingDirectory = Path.GetDirectoryName(exePath);
+                        shortcut.Save();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Failed to create Windows startup shortcut: {ex}");
+                    }
+                }
+                else if (File.Exists(shortcutPath))
+                {
+                    File.Delete(shortcutPath);
+                }
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                string autostartDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), ".config", "autostart");
+                Directory.CreateDirectory(autostartDir);
+                string desktopFile = Path.Combine(autostartDir, $"{appName}.desktop");
+
+                if (enable)
+                {
+                    string content = $@"[Desktop Entry]
+Type=Application
+Exec=""{exePath}""
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+Name={appName}
+Comment=Start {appName} at login
+";
+                    File.WriteAllText(desktopFile, content);
+                }
+                else if (File.Exists(desktopFile))
+                {
+                    File.Delete(desktopFile);
+                }
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                string launchAgentsDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), "Library", "LaunchAgents");
+                Directory.CreateDirectory(launchAgentsDir);
+                string plistPath = Path.Combine(launchAgentsDir, $"com.{appName.ToLower()}.plist");
+
+                if (enable)
+                {
+                    string plist = $@"<?xml version=""1.0"" encoding=""UTF-8""?>
+<!DOCTYPE plist PUBLIC ""-//Apple//DTD PLIST 1.0//EN"" ""http://www.apple.com/DTDs/PropertyList-1.0.dtd"">
+<plist version=""1.0"">
+<dict>
+    <key>Label</key>
+    <string>com.{appName.ToLower()}</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>{exePath}</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>
+";
+                    File.WriteAllText(plistPath, plist);
+                }
+                else if (File.Exists(plistPath))
+                {
+                    File.Delete(plistPath);
+                }
+            }
+        }
+
     }
 }
