@@ -55,6 +55,21 @@ namespace SerialVolumeControl
 
             if (disconnectButton != null)
                 disconnectButton.Click += (_, _) => Disconnect();
+
+            if (!string.IsNullOrEmpty(_lastComPort) && portComboBox != null)
+            {
+                var portNames = System.IO.Ports.SerialPort.GetPortNames();
+                if (portNames.Contains(_lastComPort))
+                {
+                    portComboBox.SelectedItem = _lastComPort;
+                    Connect();
+                }
+                else
+                {
+                    portComboBox.IsEnabled = true;
+                    if (connectButton != null) connectButton.IsEnabled = true;
+                }
+            }
         }
 
         /// <summary>
