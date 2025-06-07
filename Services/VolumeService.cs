@@ -1,14 +1,19 @@
 ﻿using System;
 using System.Diagnostics;
-
 using NAudio.CoreAudioApi;
-
 
 namespace SerialVolumeControl.Services;
 
+/// <summary>
+/// Provides functionality to get and set volume levels for specific applications and the system master volume.
+/// </summary>
 public static class VolumeService
 {
-    // function to set the volume of a specific application
+    /// <summary>
+    /// Sets the volume level for a specific application's audio session.
+    /// </summary>
+    /// <param name="appName">The name of the application (process name, case-insensitive) to modify volume for.</param>
+    /// <param name="volume">The desired volume level between 0.0 (mute) and 1.0 (max).</param>
     public static void SetAppVolume(string appName, float volume)
     {
         try
@@ -47,7 +52,11 @@ public static class VolumeService
         }
     }
 
-    // function to get the volume of a specific application
+    /// <summary>
+    /// Retrieves the current volume level of a specific application's audio session.
+    /// </summary>
+    /// <param name="appName">The name of the application (process name, case-insensitive) to retrieve volume for.</param>
+    /// <returns>The volume level between 0.0 and 1.0, or -1 if the application is not found or an error occurs.</returns>
     public static float GetAppVolume(string appName)
     {
         try
@@ -80,7 +89,10 @@ public static class VolumeService
         return -1;
     }
 
-    // Set the master/system volume (0.0 - 1.0)
+    /// <summary>
+    /// Sets the master (system-wide) volume level.
+    /// </summary>
+    /// <param name="volume">The desired volume level between 0.0 (mute) and 1.0 (max).</param>
     public static void SetMasterVolume(float volume)
     {
         try
@@ -96,7 +108,10 @@ public static class VolumeService
         }
     }
 
-    // Get the master/system volume (0.0 - 1.0)
+    /// <summary>
+    /// Retrieves the current master (system-wide) volume level.
+    /// </summary>
+    /// <returns>The volume level between 0.0 and 1.0, or -1 if an error occurs.</returns>
     public static float GetMasterVolume()
     {
         try
