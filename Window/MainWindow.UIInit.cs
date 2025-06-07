@@ -1,10 +1,12 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
+
 using Avalonia.Controls;
-using Avalonia.Threading;
-using SerialVolumeControl.Services;
+
 using SerialVolumeControl.Helpers;
+using SerialVolumeControl.Services;
+
 
 namespace SerialVolumeControl
 {

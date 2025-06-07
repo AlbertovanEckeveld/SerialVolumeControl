@@ -1,8 +1,9 @@
 using System.Collections.Generic;
 
 using Avalonia.Controls;
-using SerialVolumeControl.Services;
 using Avalonia.Controls.Primitives;
+
+using SerialVolumeControl.Services;
 
 namespace SerialVolumeControl
 {
