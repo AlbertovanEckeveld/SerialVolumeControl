@@ -21,11 +21,8 @@ A structured overview of planned features and improvements.
 ---
 
 ## 🎨 Styling & UI Improvements
-- [ ] Add light/dark mode toggle
-- [ ] Customizable accent colors
-- [ ] Improved slider and combo box visuals
-- [ ] Responsive layout for different screen sizes
-- [ ] Optional compact/expanded view modes
+- ☑️ Add light/dark mode toggle
+- ☑️ Responsive layout for different screen sizes
 
 ---
 
@@ -34,14 +31,6 @@ A structured overview of planned features and improvements.
 - [ ] Allow users to select Neopixel themes (e.g., rainbow, solid color, reactive)
 - [ ] Sync Neopixel colors with app group or volume level
 - [ ] UI for configuring Neopixel effects and mapping to sliders/groups
-
----
-
-## 🛠️ Additional Ideas
-- [ ] Preset profiles for different use cases (e.g., Streaming, Gaming, Work)
-- [ ] Import/export settings and profiles
-- [ ] Multi-language support
-- [ ] In-app update notification
 
 ---
 

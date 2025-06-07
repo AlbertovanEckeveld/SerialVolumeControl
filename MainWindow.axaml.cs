@@ -1,19 +1,13 @@
 using System;
-
-using System.IO;
 using System.Linq;
-using System.Text.Json;
 using System.Diagnostics;
 using System.Collections.Generic;
 
-using Avalonia;
-using Avalonia.Styling;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using SerialVolumeControl.Services;
 using Avalonia.Controls.Primitives;
 
-using SerialVolumeControl.Models;
 using SerialVolumeControl.Helpers;
 
 
@@ -29,16 +23,11 @@ namespace SerialVolumeControl
         private Dictionary<string, float> _savedAppVolumes = new();
         private string? _lastComPort;
 
-        private const string SettingsFile = "user_settings.json";
-
         private List<string?> _sliderAppAssignmentsList = new() { null, null, null, null, null };
 
         private ToggleButton? _themeToggle;
 
         private bool _isDarkMode = false;
-
-        private const string FocusedAppOption = "[Focused Application]";
-        private const string MasterVolumeOption = "[Master Volume]";
 
         public MainWindow()
         {
@@ -73,31 +62,8 @@ namespace SerialVolumeControl
             if (disconnectButton != null)
                 disconnectButton.Click += (_, _) => Disconnect();
 
-            // Build the dropdown list with extra options
-            var processes = Process.GetProcesses()
-                .Where(p => !string.IsNullOrEmpty(p.MainWindowTitle))
-                .Select(p =>
-                {
-                    try
-                    {
-                        var fileName = p.MainModule?.FileName;
-                        if (fileName == null)
-                            return null;
-                        return new { p.ProcessName, p.MainWindowTitle, Path = fileName };
-                    }
-                    catch
-                    {
-                        return null;
-                    }
-                })
-                .Where(p => p != null && p.ProcessName != null && p.Path != null)
-                .DistinctBy(p => p!.Path)
-                .OrderBy(p => p!.ProcessName)
-                .Select(p => p!.ProcessName!)
-                .ToList();
-
-            // Add the special options at the top
-            var dropdownOptions = new List<string> { FocusedAppOption, MasterVolumeOption };
+            var processes = ProcessHelper.GetProcessNames();
+            var dropdownOptions = new List<string> { AppConstants.FocusedAppOption, AppConstants.MasterVolumeOption };
             dropdownOptions.AddRange(processes);
 
             foreach (var comboBox in _appComboBoxes)
@@ -142,11 +108,11 @@ namespace SerialVolumeControl
                     if (!string.IsNullOrEmpty(selectedApp))
                     {
                         float currentVolume = 0;
-                        if (selectedApp == MasterVolumeOption)
+                        if (selectedApp == AppConstants.MasterVolumeOption)
                         {
                             currentVolume = VolumeService.GetMasterVolume();
                         }
-                        else if (selectedApp == FocusedAppOption)
+                        else if (selectedApp == AppConstants.FocusedAppOption)
                         {
                             var focusedApp = AppAssignmentHelper.GetForegroundProcessName();
                             currentVolume = !string.IsNullOrEmpty(focusedApp)
@@ -176,11 +142,11 @@ namespace SerialVolumeControl
                         if (!string.IsNullOrEmpty(selectedApp))
                         {
                             float vol = (float)(_volumeSliders[index].Value / 100.0);
-                            if (selectedApp == MasterVolumeOption)
+                            if (selectedApp == AppConstants.MasterVolumeOption)
                             {
                                 VolumeService.SetMasterVolume(vol);
                             }
-                            else if (selectedApp == FocusedAppOption)
+                            else if (selectedApp == AppConstants.FocusedAppOption)
                             {
                                 var focusedApp = AppAssignmentHelper.GetForegroundProcessName();
                                 if (!string.IsNullOrEmpty(focusedApp))
@@ -225,119 +191,8 @@ namespace SerialVolumeControl
                 if (connectButton != null) connectButton.IsEnabled = true;
             }
 
-            SetupThemeToggle(); // Call this after _themeToggle is assigned
-
+            SetupThemeToggle();
             SetTheme(_isDarkMode);
-        }
-
-        private void Connect()
-        {
-            try
-            {
-                var portComboBox = this.FindControl<ComboBox>("PortComboBox");
-                var connectButton = this.FindControl<Button>("ConnectButton");
-                var disconnectButton = this.FindControl<Button>("DisconnectButton");
-
-                if (portComboBox?.SelectedItem is string portName)
-                {
-                    _reader.Connect(portName);
-
-                    if (connectButton != null) connectButton.IsEnabled = false;
-                    if (portComboBox != null) portComboBox.IsEnabled = false;
-                    if (disconnectButton != null) disconnectButton.IsEnabled = true;
-
-                    _lastComPort = portName;
-                    SaveSettings();
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error connecting to serial port: {ex}");
-            }
-        }
-
-        private void Disconnect()
-        {
-            try
-            {
-                var portComboBox = this.FindControl<ComboBox>("PortComboBox");
-                var connectButton = this.FindControl<Button>("ConnectButton");
-                var disconnectButton = this.FindControl<Button>("DisconnectButton");
-
-                _reader.Disconnect();
-
-                if (connectButton != null) connectButton.IsEnabled = true;
-                if (portComboBox != null) portComboBox.IsEnabled = true;
-                if (disconnectButton != null) disconnectButton.IsEnabled = false;
-
-                SaveSettings();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error disconnecting from serial port: {ex}");
-            }
-        }
-
-        private void SaveSettings()
-        {
-            try
-            {
-                var settings = new UserSettings
-                {
-                    LastComPort = _lastComPort,
-                    AppVolumes = _savedAppVolumes,
-                    SliderAppAssignments = _sliderAppAssignmentsList,
-                    IsDarkMode = _isDarkMode // Save theme setting
-                };
-                File.WriteAllText(SettingsFile, JsonSerializer.Serialize(settings));
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error saving settings: {ex}");
-            }
-        }
-
-        private void LoadSettings()
-        {
-            try
-            {
-                if (File.Exists(SettingsFile))
-                {
-                    var json = File.ReadAllText(SettingsFile);
-                    var settings = JsonSerializer.Deserialize<UserSettings>(json);
-
-                    if (settings != null)
-                    {
-                        _lastComPort = settings.LastComPort;
-                        _savedAppVolumes = settings.AppVolumes ?? new Dictionary<string, float>();
-                        _sliderAppAssignmentsList = settings.SliderAppAssignments ?? new List<string?> { null, null, null, null, null };
-                        _isDarkMode = settings.IsDarkMode; // Load theme setting
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error loading settings: {ex}");
-            }
-        }
-
-        private void SetTheme(bool isDark)
-        {
-            _isDarkMode = isDark;
-            Application.Current!.RequestedThemeVariant = isDark ? ThemeVariant.Dark : ThemeVariant.Light;
-            SaveSettings();
-        }
-
-        private void SetupThemeToggle()
-        {
-            if (_themeToggle != null)
-            {
-                _themeToggle.IsChecked = _isDarkMode;
-                _themeToggle.IsCheckedChanged += (_, _) =>
-                {
-                    SetTheme(_themeToggle.IsChecked == true);
-                };
-            }
         }
 
     }
