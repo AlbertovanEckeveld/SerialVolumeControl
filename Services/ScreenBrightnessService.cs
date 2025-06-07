@@ -2,10 +2,17 @@ using System;
 using System.Management;
 using System.Runtime.InteropServices;
 
-namespace SerialVolumeControl.Helpers
+namespace SerialVolumeControl.Services
 {
-    public static class ScreenBrightnessHelper
+    public static class ScreenBrightnessService
     {
+        /// <summary>
+        /// Retrieves the current screen brightness percentage.
+        /// </summary>
+        /// <returns>
+        /// An integer representing the current brightness level (0–100).
+        /// Returns 100 if not running on Windows or if retrieval fails.
+        /// </returns>
         public static int GetBrightness()
         {
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -24,6 +31,17 @@ namespace SerialVolumeControl.Helpers
             return 100;
         }
 
+
+        /// <summary>
+        /// Sets the screen brightness to the specified level.
+        /// </summary>
+        /// <param name="brightness">
+        /// An integer between 0 and 100 representing the desired brightness level.
+        /// </param>
+        /// <remarks>
+        /// Only works on Windows systems where WMI access to monitor brightness is available.
+        /// Does nothing if called on a non-Windows platform or if an error occurs.
+        /// </remarks>
         public static void SetBrightness(int brightness)
         {
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))

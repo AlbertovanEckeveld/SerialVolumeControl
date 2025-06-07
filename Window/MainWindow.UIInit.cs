@@ -162,7 +162,7 @@ namespace SerialVolumeControl
                         }
                         else if (selectedApp == AppConstants.ScreenBrightnessOption)
                         {
-                            _volumeSliders[index].Value = ScreenBrightnessHelper.GetBrightness();
+                            _volumeSliders[index].Value = ScreenBrightnessService.GetBrightness();
                         }
                         else
                         {
@@ -200,7 +200,7 @@ namespace SerialVolumeControl
                             }
                             else if (selectedApp == AppConstants.ScreenBrightnessOption)
                             {
-                                ScreenBrightnessHelper.SetBrightness((int)_volumeSliders[index].Value);
+                                ScreenBrightnessService.SetBrightness((int)_volumeSliders[index].Value);
                             }
                             else
                             {
