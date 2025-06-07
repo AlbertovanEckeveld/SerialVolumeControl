@@ -43,26 +43,26 @@ Download the latest executable release [here.](https://github.com/AlbertovanEcke
 
 <details><summary>Build project</summary><br>
 
-	1. **Clone the repository:**
+1. **Clone the repository:**
 
-		```bash
-		git clone https://github.com/AlbertovanEckeveld/SerialVolumeControl.git 
-		cd SerialVolumeControl
-		```
+	```bash
+	git clone https://github.com/AlbertovanEckeveld/SerialVolumeControl.git 
+	cd SerialVolumeControl
+	```
 
-	2. **Restore dependencies:**
-		```bash
-			dotnet restore
-		```
+2. **Restore dependencies:**
+	```bash
+		dotnet restore
+	```
 
-	3. **Build the project:**
-		```bash
-			dotnet build
-		```
-	4. **Run the application:**
-		```bash
-			dotnet run --project SerialVolumeControl
-		``` 
+3. **Build the project:**
+	```bash
+		dotnet build
+	```
+4. **Run the application:**
+	```bash
+		dotnet run --project SerialVolumeControl
+	``` 
 </details>
 
 
