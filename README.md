@@ -73,7 +73,7 @@ Download the latest executable release [here.](https://github.com/AlbertovanEcke
 3. **Select the COM port** (or it will auto-connect to the last used port).
 4. **Assign applications** to each slider using the dropdowns.
 5. **Move the sliders** to control the volume of the assigned apps in real time.
-6. **Settings are saved automatically**�your assignments and volumes will be restored on next launch.
+6. **Settings are saved automatically** your assignments and volumes will be restored on next launch.
 
 ---
 

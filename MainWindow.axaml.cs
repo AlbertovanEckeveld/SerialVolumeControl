@@ -1,15 +1,17 @@
-using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
-using Avalonia.Styling;
-using Avalonia.Threading;
-using SerialVolumeControl.Services;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Styling;
+using Avalonia.Threading;
+using SerialVolumeControl.Services;
+
 
 namespace SerialVolumeControl
 {
@@ -30,6 +32,9 @@ namespace SerialVolumeControl
         private ToggleButton? _themeToggle;
 
         private bool _isDarkMode = false;
+
+        private const string FocusedAppOption = "[Focused Application]";
+        private const string MasterVolumeOption = "[Master Volume]";
 
         public MainWindow()
         {
@@ -64,6 +69,7 @@ namespace SerialVolumeControl
             if (disconnectButton != null)
                 disconnectButton.Click += (_, _) => Disconnect();
 
+            // Build the dropdown list with extra options
             var processes = Process.GetProcesses()
                 .Where(p => !string.IsNullOrEmpty(p.MainWindowTitle))
                 .Select(p =>
@@ -83,22 +89,23 @@ namespace SerialVolumeControl
                 .Where(p => p != null && p.ProcessName != null && p.Path != null)
                 .DistinctBy(p => p!.Path)
                 .OrderBy(p => p!.ProcessName)
+                .Select(p => p!.ProcessName!)
                 .ToList();
+
+            // Add the special options at the top
+            var dropdownOptions = new List<string> { FocusedAppOption, MasterVolumeOption };
+            dropdownOptions.AddRange(processes);
 
             foreach (var comboBox in _appComboBoxes)
             {
-                comboBox.ItemsSource = processes
-                    .Where(p => p != null && p.ProcessName != null)
-                    .Select(p => p!.ProcessName!)
-                    .ToList();
-
+                comboBox.ItemsSource = dropdownOptions;
                 comboBox.Classes.Add("app-combobox");
             }
 
             for (int i = 0; i < Math.Min(_sliderAppAssignmentsList.Count, _appComboBoxes.Count); i++)
             {
                 var appName = _sliderAppAssignmentsList[i];
-                if (!string.IsNullOrEmpty(appName) && _appComboBoxes[i].Items != null && _appComboBoxes[i].Items.Contains(appName))
+                if (!string.IsNullOrEmpty(appName) && _appComboBoxes[i].ItemsSource != null && ((IEnumerable<string>)_appComboBoxes[i].ItemsSource).Contains(appName))
                 {
                     _appComboBoxes[i].SelectedItem = appName;
                     _sliderAppAssignments[i] = appName;
@@ -129,9 +136,24 @@ namespace SerialVolumeControl
 
                     if (!string.IsNullOrEmpty(selectedApp))
                     {
-                        float currentVolume = _savedAppVolumes.TryGetValue(selectedApp, out var savedVol)
-                            ? savedVol
-                            : VolumeService.GetAppVolume(selectedApp);
+                        float currentVolume = 0;
+                        if (selectedApp == MasterVolumeOption)
+                        {
+                            currentVolume = VolumeService.GetMasterVolume();
+                        }
+                        else if (selectedApp == FocusedAppOption)
+                        {
+                            var focusedApp = GetForegroundProcessName();
+                            currentVolume = !string.IsNullOrEmpty(focusedApp)
+                                ? VolumeService.GetAppVolume(focusedApp)
+                                : 0;
+                        }
+                        else
+                        {
+                            currentVolume = _savedAppVolumes.TryGetValue(selectedApp, out var savedVol)
+                                ? savedVol
+                                : VolumeService.GetAppVolume(selectedApp);
+                        }
                         _volumeSliders[index].Value = currentVolume * 100;
                     }
                     else
@@ -149,9 +171,21 @@ namespace SerialVolumeControl
                         if (!string.IsNullOrEmpty(selectedApp))
                         {
                             float vol = (float)(_volumeSliders[index].Value / 100.0);
-                            VolumeService.SetAppVolume(selectedApp, vol);
-
-                            _savedAppVolumes[selectedApp] = vol;
+                            if (selectedApp == MasterVolumeOption)
+                            {
+                                VolumeService.SetMasterVolume(vol);
+                            }
+                            else if (selectedApp == FocusedAppOption)
+                            {
+                                var focusedApp = GetForegroundProcessName();
+                                if (!string.IsNullOrEmpty(focusedApp))
+                                    VolumeService.SetAppVolume(focusedApp, vol);
+                            }
+                            else
+                            {
+                                VolumeService.SetAppVolume(selectedApp, vol);
+                                _savedAppVolumes[selectedApp] = vol;
+                            }
                             SaveSettings();
                         }
                     }
@@ -309,6 +343,32 @@ namespace SerialVolumeControl
             public Dictionary<string, float>? AppVolumes { get; set; }
             public List<string?>? SliderAppAssignments { get; set; }
             public bool IsDarkMode { get; set; }
+        }
+
+        // Add these helper methods to your MainWindow class:
+        private static string? GetForegroundProcessName()
+        {
+            try
+            {
+                var hwnd = NativeMethods.GetForegroundWindow();
+                NativeMethods.GetWindowThreadProcessId(hwnd, out uint pid);
+                var proc = Process.GetProcessById((int)pid);
+                return proc.ProcessName;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        // Native methods for getting the foreground window
+        private static class NativeMethods
+        {
+            [System.Runtime.InteropServices.DllImport("user32.dll")]
+            public static extern IntPtr GetForegroundWindow();
+
+            [System.Runtime.InteropServices.DllImport("user32.dll")]
+            public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
         }
     }
 }

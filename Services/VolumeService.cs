@@ -1,6 +1,8 @@
-﻿using NAudio.CoreAudioApi;
-using System;
+﻿using System;
 using System.Diagnostics;
+
+using NAudio.CoreAudioApi;
+
 
 namespace SerialVolumeControl.Services;
 
@@ -78,4 +80,35 @@ public static class VolumeService
         return -1;
     }
 
+    // Set the master/system volume (0.0 - 1.0)
+    public static void SetMasterVolume(float volume)
+    {
+        try
+        {
+            var enumerator = new MMDeviceEnumerator();
+            var device = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+            device.AudioEndpointVolume.MasterVolumeLevelScalar = Math.Clamp(volume, 0f, 1f);
+            Console.WriteLine($"[INFO] Set master volume to {volume * 100}%");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ERROR] Failed to set master volume: {ex.Message}");
+        }
+    }
+
+    // Get the master/system volume (0.0 - 1.0)
+    public static float GetMasterVolume()
+    {
+        try
+        {
+            var enumerator = new MMDeviceEnumerator();
+            var device = enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+            return device.AudioEndpointVolume.MasterVolumeLevelScalar;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ERROR] Failed to get master volume: {ex.Message}");
+            return -1;
+        }
+    }
 }
