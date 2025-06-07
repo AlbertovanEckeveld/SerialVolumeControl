@@ -10,10 +10,10 @@ namespace SerialVolumeControl;
 
 public partial class MainWindow : Window
 {
-    private readonly List<ComboBox> _appComboBoxes;
-    private readonly List<Slider> _volumeSliders;
-
-    private SerialReader _reader = new SerialReader();
+    private readonly List<ComboBox> _appComboBoxes = new();
+    private readonly List<Slider> _volumeSliders = new();
+    private readonly Dictionary<int, string?> _sliderAppAssignments = new();
+    private readonly SerialReader _reader = new();
 
     public MainWindow()
     {
@@ -21,43 +21,58 @@ public partial class MainWindow : Window
 
         PortComboBox.ItemsSource = System.IO.Ports.SerialPort.GetPortNames();
         ConnectButton.Click += (_, _) => Connect();
+        DisconnectButton.Click += (_, _) => Disconnect();
 
-        _appComboBoxes = new List<ComboBox>
+        foreach (var name in new[] { "AppComboBox1", "AppComboBox2", "AppComboBox3", "AppComboBox4", "AppComboBox5" })
         {
-            this.FindControl<ComboBox>("AppComboBox1"),
-            this.FindControl<ComboBox>("AppComboBox2"),
-            this.FindControl<ComboBox>("AppComboBox3"),
-            this.FindControl<ComboBox>("AppComboBox4"),
-            this.FindControl<ComboBox>("AppComboBox5"),
-        };
+            var combo = this.FindControl<ComboBox>(name);
+            if (combo != null) _appComboBoxes.Add(combo);
+        }
 
-        _volumeSliders = new List<Slider>
+        foreach (var name in new[] { "VolumeSlider1", "VolumeSlider2", "VolumeSlider3", "VolumeSlider4", "VolumeSlider5" })
         {
-            this.FindControl<Slider>("VolumeSlider1"),
-            this.FindControl<Slider>("VolumeSlider2"),
-            this.FindControl<Slider>("VolumeSlider3"),
-            this.FindControl<Slider>("VolumeSlider4"),
-            this.FindControl<Slider>("VolumeSlider5"),
-        };
+            var slider = this.FindControl<Slider>(name);
+            if (slider != null) _volumeSliders.Add(slider);
+        }
 
-        // Populate ComboBoxes with running processes (apps)
         var processes = Process.GetProcesses()
             .Where(p => !string.IsNullOrEmpty(p.MainWindowTitle))
-            .Select(p => p.ProcessName)
-            .Distinct()
-            .OrderBy(n => n)
+            .Select(p =>
+            {
+                try { return new { p.ProcessName, p.MainWindowTitle, Path = p.MainModule.FileName }; }
+                catch { return null; }
+            })
+            .Where(p => p != null)
+            .DistinctBy(p => p.Path)
+            .OrderBy(p => p.ProcessName)
             .ToList();
 
         foreach (var comboBox in _appComboBoxes)
         {
-            comboBox.ItemsSource = processes;
+            comboBox.ItemsSource = processes.Select(p => p.ProcessName).ToList();
         }
 
-        // Attach event handlers for sliders
-        for (int i = 0; i < _volumeSliders.Count; i++)
+        for (int i = 0; i < Math.Min(_volumeSliders.Count, _appComboBoxes.Count); i++)
         {
             int index = i;
-            _volumeSliders[i].PropertyChanged += (_, e) =>
+
+            _appComboBoxes[index].SelectionChanged += (sender, e) =>
+            {
+                var selectedApp = _appComboBoxes[index].SelectedItem as string;
+                _sliderAppAssignments[index] = selectedApp;
+
+                if (!string.IsNullOrEmpty(selectedApp))
+                {
+                    float currentVolume = VolumeService.GetAppVolume(selectedApp);
+                    _volumeSliders[index].Value = currentVolume * 100;
+                }
+                else
+                {
+                    _volumeSliders[index].Value = 0;
+                }
+            };
+
+            _volumeSliders[index].PropertyChanged += (_, e) =>
             {
                 if (e.Property.Name == "Value")
                 {
@@ -69,14 +84,55 @@ public partial class MainWindow : Window
                     }
                 }
             };
+
+            _sliderAppAssignments[index] = null;
         }
+
+        _reader.SliderChanged += (sliderIndex, value) =>
+        {
+            Console.WriteLine($"UI received: slider {sliderIndex} value={value}");
+            if (sliderIndex >= 0 && sliderIndex < _volumeSliders.Count)
+            {
+                double sliderValue = Math.Clamp(value / 1023.0 * 100, 0, 100);
+                Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    Console.WriteLine($"Setting slider {sliderIndex} to {sliderValue}");
+                    _volumeSliders[sliderIndex].Value = sliderValue;
+                });
+            }
+        };
     }
 
     private void Connect()
     {
-        if (PortComboBox.SelectedItem is string portName)
+        try
         {
-            _reader.Connect(portName);
+            if (PortComboBox.SelectedItem is string portName)
+            {
+                _reader.Connect(portName);
+                ConnectButton.IsEnabled = false;
+                PortComboBox.IsEnabled = false;
+                DisconnectButton.IsEnabled = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error connecting to serial port: {ex}");
+        }
+    }
+
+    private void Disconnect()
+    {
+        try
+        {
+            _reader.Disconnect();
+            ConnectButton.IsEnabled = true;
+            PortComboBox.IsEnabled = true;
+            DisconnectButton.IsEnabled = false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error disconnecting from serial port: {ex}");
         }
     }
 }

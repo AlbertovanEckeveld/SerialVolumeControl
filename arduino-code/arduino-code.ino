@@ -4,10 +4,16 @@ void setup() {
 }
 
 void loop() {
-  Serial.println("Slider0: " + String(analogRead(A0)));
-  Serial.println("Slider1: " + String(analogRead(A1)));
-  Serial.println("Slider2: " + String(analogRead(A2)));
-  Serial.println("Slider3: " + String(analogRead(A3)));
-  Serial.println("Slider4: " + String(analogRead(A4)));
+  sendSliderData();
+  
+}
 
+void getThema() {}
+
+void sendSliderData() {
+  Serial.println("slider0: " + String(analogRead(A0)));
+  Serial.println("slider1: " + String(analogRead(A1)));
+  Serial.println("slider2: " + String(analogRead(A2)));
+  Serial.println("slider3: " + String(analogRead(A3)));
+  Serial.println("slider4: " + String(analogRead(A4)));
 }
