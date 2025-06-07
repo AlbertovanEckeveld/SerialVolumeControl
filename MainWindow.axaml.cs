@@ -5,6 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.IO;
+using System.Text.Json;
 
 namespace SerialVolumeControl;
 
@@ -15,9 +18,20 @@ public partial class MainWindow : Window
     private readonly Dictionary<int, string?> _sliderAppAssignments = new();
     private readonly SerialReader _reader = new();
 
+    private Dictionary<string, float> _savedAppVolumes = new();
+    private string? _lastComPort;
+
+    private const string SettingsFile = "user_settings.json";
+
+#if WINDOWS
+    private System.Windows.Forms.NotifyIcon? _notifyIcon;
+#endif
+
     public MainWindow()
     {
         InitializeComponent();
+
+        LoadSettings();
 
         PortComboBox.ItemsSource = System.IO.Ports.SerialPort.GetPortNames();
         ConnectButton.Click += (_, _) => Connect();
@@ -39,17 +53,29 @@ public partial class MainWindow : Window
             .Where(p => !string.IsNullOrEmpty(p.MainWindowTitle))
             .Select(p =>
             {
-                try { return new { p.ProcessName, p.MainWindowTitle, Path = p.MainModule.FileName }; }
-                catch { return null; }
+                try
+                {
+                    var fileName = p.MainModule?.FileName;
+                    if (fileName == null)
+                        return null;
+                    return new { p.ProcessName, p.MainWindowTitle, Path = fileName };
+                }
+                catch
+                {
+                    return null;
+                }
             })
-            .Where(p => p != null)
-            .DistinctBy(p => p.Path)
-            .OrderBy(p => p.ProcessName)
+            .Where(p => p != null && p.ProcessName != null && p.Path != null)
+            .DistinctBy(p => p!.Path)
+            .OrderBy(p => p!.ProcessName)
             .ToList();
 
         foreach (var comboBox in _appComboBoxes)
         {
-            comboBox.ItemsSource = processes.Select(p => p.ProcessName).ToList();
+            comboBox.ItemsSource = processes
+                .Where(p => p != null && p.ProcessName != null)
+                .Select(p => p!.ProcessName!)
+                .ToList();
         }
 
         for (int i = 0; i < Math.Min(_volumeSliders.Count, _appComboBoxes.Count); i++)
@@ -63,13 +89,16 @@ public partial class MainWindow : Window
 
                 if (!string.IsNullOrEmpty(selectedApp))
                 {
-                    float currentVolume = VolumeService.GetAppVolume(selectedApp);
+                    float currentVolume = _savedAppVolumes.TryGetValue(selectedApp, out var savedVol)
+                        ? savedVol
+                        : VolumeService.GetAppVolume(selectedApp);
                     _volumeSliders[index].Value = currentVolume * 100;
                 }
                 else
                 {
                     _volumeSliders[index].Value = 0;
                 }
+                SaveSettings();
             };
 
             _volumeSliders[index].PropertyChanged += (_, e) =>
@@ -81,6 +110,9 @@ public partial class MainWindow : Window
                     {
                         float vol = (float)(_volumeSliders[index].Value / 100.0);
                         VolumeService.SetAppVolume(selectedApp, vol);
+
+                        _savedAppVolumes[selectedApp] = vol;
+                        SaveSettings();
                     }
                 }
             };
@@ -101,6 +133,18 @@ public partial class MainWindow : Window
                 });
             }
         };
+
+        // Try auto-connect to last COM port
+        if (!string.IsNullOrEmpty(_lastComPort) && System.IO.Ports.SerialPort.GetPortNames().Contains(_lastComPort))
+        {
+            PortComboBox.SelectedItem = _lastComPort;
+            Connect();
+        }
+        else
+        {
+            PortComboBox.IsEnabled = true;
+            ConnectButton.IsEnabled = true;
+        }
     }
 
     private void Connect()
@@ -113,6 +157,8 @@ public partial class MainWindow : Window
                 ConnectButton.IsEnabled = false;
                 PortComboBox.IsEnabled = false;
                 DisconnectButton.IsEnabled = true;
+                _lastComPort = portName;
+                SaveSettings();
             }
         }
         catch (Exception ex)
@@ -129,10 +175,54 @@ public partial class MainWindow : Window
             ConnectButton.IsEnabled = true;
             PortComboBox.IsEnabled = true;
             DisconnectButton.IsEnabled = false;
+            SaveSettings();
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error disconnecting from serial port: {ex}");
         }
+    }
+
+    private void SaveSettings()
+    {
+        try
+        {
+            var settings = new UserSettings
+            {
+                LastComPort = _lastComPort,
+                AppVolumes = _savedAppVolumes
+            };
+            File.WriteAllText(SettingsFile, JsonSerializer.Serialize(settings));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to save settings: {ex}");
+        }
+    }
+
+    private void LoadSettings()
+    {
+        try
+        {
+            if (File.Exists(SettingsFile))
+            {
+                var settings = JsonSerializer.Deserialize<UserSettings>(File.ReadAllText(SettingsFile));
+                if (settings != null)
+                {
+                    _lastComPort = settings.LastComPort;
+                    _savedAppVolumes = settings.AppVolumes ?? new Dictionary<string, float>();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to load settings: {ex}");
+        }
+    }
+
+    private class UserSettings
+    {
+        public string? LastComPort { get; set; }
+        public Dictionary<string, float>? AppVolumes { get; set; }
     }
 }
