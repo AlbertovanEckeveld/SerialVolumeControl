@@ -16,6 +16,7 @@ namespace SerialVolumeControl.Services
 
         public event Action<int, int>? SliderChanged;
 
+        // Connect method to initialize the serial port and start listening for data
         public void Connect(string portName, int baudRate = 9600)
         {
             _port = new SerialPort(portName, baudRate);
@@ -26,6 +27,7 @@ namespace SerialVolumeControl.Services
             _processTimer = new Timer(ProcessLines, null, 0, 20);
         }
 
+        // Event handler for data received from the serial port
         private void OnDataReceived(object? sender, SerialDataReceivedEventArgs e)
         {
             try
@@ -53,6 +55,7 @@ namespace SerialVolumeControl.Services
             }
         }
 
+        // Process lines from the queue on the main thread
         private void ProcessLines(object? state)
         {
             while (_receivedLines.TryDequeue(out var line))
@@ -68,6 +71,7 @@ namespace SerialVolumeControl.Services
             }
         }
 
+        // Disconnect method to close the serial port and dispose of resources
         public void Disconnect()
         {
             if (_port != null)

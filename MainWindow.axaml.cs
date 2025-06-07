@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.IO;
 using System.Text.Json;
 
@@ -23,32 +22,41 @@ public partial class MainWindow : Window
 
     private const string SettingsFile = "user_settings.json";
 
+    private List<string?> _sliderAppAssignmentsList = new() { null, null, null, null, null };
+
+
 #if WINDOWS
     private System.Windows.Forms.NotifyIcon? _notifyIcon;
 #endif
 
     public MainWindow()
     {
+        // Initialize the main window and load settings
         InitializeComponent();
 
+        // Set up the main window properties
         LoadSettings();
 
+        // Initialize the serial reader
         PortComboBox.ItemsSource = System.IO.Ports.SerialPort.GetPortNames();
         ConnectButton.Click += (_, _) => Connect();
         DisconnectButton.Click += (_, _) => Disconnect();
 
+        // Initialize combo boxes for app selection
         foreach (var name in new[] { "AppComboBox1", "AppComboBox2", "AppComboBox3", "AppComboBox4", "AppComboBox5" })
         {
             var combo = this.FindControl<ComboBox>(name);
             if (combo != null) _appComboBoxes.Add(combo);
         }
 
+        // Initialize volume sliders
         foreach (var name in new[] { "VolumeSlider1", "VolumeSlider2", "VolumeSlider3", "VolumeSlider4", "VolumeSlider5" })
         {
             var slider = this.FindControl<Slider>(name);
             if (slider != null) _volumeSliders.Add(slider);
         }
 
+        // Initialize slider assignments
         var processes = Process.GetProcesses()
             .Where(p => !string.IsNullOrEmpty(p.MainWindowTitle))
             .Select(p =>
@@ -70,6 +78,7 @@ public partial class MainWindow : Window
             .OrderBy(p => p!.ProcessName)
             .ToList();
 
+        // Populate combo boxes with process names
         foreach (var comboBox in _appComboBoxes)
         {
             comboBox.ItemsSource = processes
@@ -78,6 +87,28 @@ public partial class MainWindow : Window
                 .ToList();
         }
 
+        // Restore saved app assignments to combo boxes
+        for (int i = 0; i < Math.Min(_sliderAppAssignmentsList.Count, _appComboBoxes.Count); i++)
+        {
+            var appName = _sliderAppAssignmentsList[i];
+            if (!string.IsNullOrEmpty(appName) && _appComboBoxes[i].Items != null && _appComboBoxes[i].Items.Contains(appName))
+            {
+                _appComboBoxes[i].SelectedItem = appName;
+                _sliderAppAssignments[i] = appName;
+                float currentVolume = _savedAppVolumes.TryGetValue(appName, out var savedVol)
+                    ? savedVol
+                    : VolumeService.GetAppVolume(appName);
+                _volumeSliders[i].Value = currentVolume * 100;
+            }
+            else
+            {
+                _appComboBoxes[i].SelectedItem = null;
+                _sliderAppAssignments[i] = null;
+                _volumeSliders[i].Value = 0;
+            }
+        }
+
+        // Set up event handlers for each slider and combo box
         for (int i = 0; i < Math.Min(_volumeSliders.Count, _appComboBoxes.Count); i++)
         {
             int index = i;
@@ -86,6 +117,7 @@ public partial class MainWindow : Window
             {
                 var selectedApp = _appComboBoxes[index].SelectedItem as string;
                 _sliderAppAssignments[index] = selectedApp;
+                _sliderAppAssignmentsList[index] = selectedApp;
 
                 if (!string.IsNullOrEmpty(selectedApp))
                 {
@@ -101,6 +133,7 @@ public partial class MainWindow : Window
                 SaveSettings();
             };
 
+            // Set initial slider value based on saved volume or current app volume
             _volumeSliders[index].PropertyChanged += (_, e) =>
             {
                 if (e.Property.Name == "Value")
@@ -120,6 +153,7 @@ public partial class MainWindow : Window
             _sliderAppAssignments[index] = null;
         }
 
+        // Handle slider changes from the serial reader
         _reader.SliderChanged += (sliderIndex, value) =>
         {
             Console.WriteLine($"UI received: slider {sliderIndex} value={value}");
@@ -147,6 +181,7 @@ public partial class MainWindow : Window
         }
     }
 
+    // Try to connect to the serial port when the window is loaded
     private void Connect()
     {
         try
@@ -167,6 +202,7 @@ public partial class MainWindow : Window
         }
     }
 
+    // Disconnect from the serial port when the user clicks the disconnect button
     private void Disconnect()
     {
         try
@@ -183,6 +219,7 @@ public partial class MainWindow : Window
         }
     }
 
+    // Save user settings to a JSON file
     private void SaveSettings()
     {
         try
@@ -190,7 +227,8 @@ public partial class MainWindow : Window
             var settings = new UserSettings
             {
                 LastComPort = _lastComPort,
-                AppVolumes = _savedAppVolumes
+                AppVolumes = _savedAppVolumes,
+                SliderApps = _sliderAppAssignmentsList
             };
             File.WriteAllText(SettingsFile, JsonSerializer.Serialize(settings));
         }
@@ -200,6 +238,7 @@ public partial class MainWindow : Window
         }
     }
 
+    // Load user settings from a JSON file
     private void LoadSettings()
     {
         try
@@ -211,6 +250,7 @@ public partial class MainWindow : Window
                 {
                     _lastComPort = settings.LastComPort;
                     _savedAppVolumes = settings.AppVolumes ?? new Dictionary<string, float>();
+                    _sliderAppAssignmentsList = settings.SliderApps ?? new List<string?> { null, null, null, null, null };
                 }
             }
         }
@@ -220,9 +260,11 @@ public partial class MainWindow : Window
         }
     }
 
+    // Class to hold user settings for serialization
     private class UserSettings
     {
         public string? LastComPort { get; set; }
         public Dictionary<string, float>? AppVolumes { get; set; }
+        public List<string?>? SliderApps { get; set; } // Add this for slider-app mapping
     }
 }
