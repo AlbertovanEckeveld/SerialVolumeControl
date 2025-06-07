@@ -364,3 +364,4 @@ FodyWeavers.xsd
 
 # User settings
 user_settings.json
+/user_settings.json
