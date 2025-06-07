@@ -86,7 +86,11 @@ namespace SerialVolumeControl
         private void InitializeDropdowns()
         {
             var processes = ProcessHelper.GetProcessNames();
-            var dropdownOptions = new List<string> { AppConstants.FocusedAppOption, AppConstants.MasterVolumeOption };
+            var dropdownOptions = new List<string> { 
+                AppConstants.FocusedAppOption, 
+                AppConstants.MasterVolumeOption,
+                AppConstants.ScreenBrightnessOption
+            };
             dropdownOptions.AddRange(processes);
 
             foreach (var comboBox in _appComboBoxes)
@@ -156,6 +160,10 @@ namespace SerialVolumeControl
                                 ? VolumeService.GetAppVolume(focusedApp)
                                 : 0;
                         }
+                        else if (selectedApp == AppConstants.ScreenBrightnessOption)
+                        {
+                            _volumeSliders[index].Value = ScreenBrightnessHelper.GetBrightness();
+                        }
                         else
                         {
                             currentVolume = _savedAppVolumes.TryGetValue(selectedApp, out var savedVol)
@@ -178,19 +186,25 @@ namespace SerialVolumeControl
                         var selectedApp = _appComboBoxes[index].SelectedItem as string;
                         if (!string.IsNullOrEmpty(selectedApp))
                         {
-                            float vol = (float)(_volumeSliders[index].Value / 100.0);
                             if (selectedApp == AppConstants.MasterVolumeOption)
                             {
+                                float vol = (float)(_volumeSliders[index].Value / 100.0);
                                 VolumeService.SetMasterVolume(vol);
                             }
                             else if (selectedApp == AppConstants.FocusedAppOption)
                             {
+                                float vol = (float)(_volumeSliders[index].Value / 100.0);
                                 var focusedApp = AppAssignmentHelper.GetForegroundProcessName();
                                 if (!string.IsNullOrEmpty(focusedApp))
                                     VolumeService.SetAppVolume(focusedApp, vol);
                             }
+                            else if (selectedApp == AppConstants.ScreenBrightnessOption)
+                            {
+                                ScreenBrightnessHelper.SetBrightness((int)_volumeSliders[index].Value);
+                            }
                             else
                             {
+                                float vol = (float)(_volumeSliders[index].Value / 100.0);
                                 VolumeService.SetAppVolume(selectedApp, vol);
                                 _savedAppVolumes[selectedApp] = vol;
                             }
