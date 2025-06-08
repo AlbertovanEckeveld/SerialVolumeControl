@@ -1,5 +1,6 @@
 using System;
 using Avalonia.Controls;
+using Avalonia.Extensions.Controls;
 
 namespace SerialVolumeControl
 {
@@ -36,7 +37,7 @@ namespace SerialVolumeControl
 
                 _trayIcon = new TrayIcon
                 {
-                    Icon = new WindowIcon("Assets/trayicon.ico"),
+                    Icon = new WindowIcon("Assets/mixer.ico"), // Zorg dat dit icoon bestaat en wordt gekopieerd naar output
                     ToolTipText = "SerialVolumeControl",
                     Menu = _trayMenu
                 };
@@ -58,15 +59,15 @@ namespace SerialVolumeControl
         /// </remarks>
         private void ToggleWindowVisibility()
         {
-            if (this.WindowState == WindowState.Minimized || !this.IsVisible)
+            if (WindowState == WindowState.Minimized || !IsVisible)
             {
-                this.Show();
-                this.WindowState = WindowState.Normal;
-                this.Activate();
+                Show();
+                WindowState = WindowState.Normal;
+                Activate();
             }
             else
             {
-                this.Hide();
+                Hide();
             }
         }
 
@@ -98,7 +99,7 @@ namespace SerialVolumeControl
             if (!_isExitRequested)
             {
                 e.Cancel = true;
-                this.Hide();
+                Hide();
             }
             else
             {

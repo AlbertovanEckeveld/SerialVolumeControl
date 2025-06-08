@@ -1,0 +1,526 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>SerialVolumeControl</name>
+    </assembly>
+    <members>
+        <member name="T:SerialVolumeControl.App">
+            <summary>
+            Represents the application entry point for the SerialVolumeControl Avalonia application.
+            </summary>
+        </member>
+        <member name="M:SerialVolumeControl.App.Initialize">
+            <summary>
+            Initializes the application and loads the XAML markup.
+            Called during the application startup.
+            </summary>
+        </member>
+        <member name="M:SerialVolumeControl.App.OnFrameworkInitializationCompleted">
+            <summary>
+            Called when the Avalonia framework has completed initialization.
+            Sets the main window for desktop-style application lifetimes.
+            </summary>
+        </member>
+        <member name="T:SerialVolumeControl.Helpers.AppAssignmentHelper">
+            <summary>
+            Provides helper methods related to process and window assignment.
+            </summary>
+        </member>
+        <member name="M:SerialVolumeControl.Helpers.AppAssignmentHelper.GetForegroundProcessName">
+            <summary>
+            Retrieves the process name of the application that currently has focus (is in the foreground).
+            </summary>
+            <returns>
+            The name of the foreground process, or <c>null</c> if the process could not be determined.
+            </returns>
+            <remarks>
+            This method uses native Windows API calls to identify the process associated with the active window.
+            Useful for context-aware volume control or monitoring active applications.
+            </remarks>
+        </member>
+        <member name="T:SerialVolumeControl.Helpers.AppConstants">
+            <summary>
+            Provides constant values and utility paths used throughout the SerialVolumeControl application.
+            </summary>
+        </member>
+        <member name="F:SerialVolumeControl.Helpers.AppConstants.MasterVolumeOption">
+            <summary>
+            Option string representing control of the master system volume.
+            </summary>
+        </member>
+        <member name="F:SerialVolumeControl.Helpers.AppConstants.FocusedAppOption">
+            <summary>
+            Option string representing control of the currently focused application's volume.
+            </summary>
+        </member>
+        <member name="F:SerialVolumeControl.Helpers.AppConstants.ScreenBrightnessOption">
+            <summary>
+            Option string representing control of the screen brightness.
+            </summary>
+        </member>
+        <member name="P:SerialVolumeControl.Helpers.AppConstants.SettingsDirectory">
+            <summary>
+            Gets the full path to the directory where application settings are stored.
+            Located in the user's Application Data folder.
+            </summary>
+        </member>
+        <member name="P:SerialVolumeControl.Helpers.AppConstants.SettingsFile">
+            <summary>
+            Gets the full path to the user settings file (user_settings.json) used by the application.
+            </summary>
+        </member>
+        <member name="T:SerialVolumeControl.Helpers.NativeMethods">
+            <summary>
+            Contains P/Invoke declarations for native Win32 methods used in window and process handling.
+            </summary>
+        </member>
+        <member name="M:SerialVolumeControl.Helpers.NativeMethods.GetForegroundWindow">
+            <summary>
+            Retrieves a handle to the foreground window (the window with which the user is currently interacting).
+            </summary>
+            <returns>
+            A handle to the foreground window. The return value is <c>IntPtr.Zero</c> if no foreground window exists.
+            </returns>
+            <remarks>
+            This function can be used to determine which window is currently active.
+            </remarks>
+        </member>
+        <member name="M:SerialVolumeControl.Helpers.NativeMethods.GetWindowThreadProcessId(System.IntPtr,System.UInt32@)">
+            <summary>
+            Retrieves the identifier of the thread that created the specified window and optionally retrieves the process ID.
+            </summary>
+            <param name="hWnd">A handle to the window.</param>
+            <param name="lpdwProcessId">
+            When the function returns, this parameter contains the process identifier of the window's creator.
+            </param>
+            <returns>
+            The identifier of the thread that created the window.
+            </returns>
+            <remarks>
+            This function is often used in combination with <see cref="M:SerialVolumeControl.Helpers.NativeMethods.GetForegroundWindow"/> to determine the process
+            that owns the currently active window.
+            </remarks>
+        </member>
+        <member name="T:SerialVolumeControl.Helpers.ProcessHelper">
+            <summary>
+            Provides utility functions for retrieving and filtering running system processes.
+            </summary>
+        </member>
+        <member name="M:SerialVolumeControl.Helpers.ProcessHelper.GetProcessNames">
+            <summary>
+            Retrieves a list of distinct process names for applications with a visible main window.
+            </summary>
+            <returns>
+            A list of unique process names sorted alphabetically. Only processes with a non-empty
+            <see cref="P:System.Diagnostics.Process.MainWindowTitle"/> and accessible <see cref="P:System.Diagnostics.Process.MainModule"/> are included.
+            </returns>
+            <remarks>
+            Processes without a main window or with inaccessible module information (due to permissions)
+            are ignored. The result list is deduplicated based on the full path of the process executable.
+            </remarks>
+        </member>
+        <member name="T:SerialVolumeControl.MainWindow">
+            <summary>
+            Represents the main window of the SerialVolumeControl application.
+            Manages the user interface, serial communication, settings, and UI interactions.
+            </summary>
+            <summary>
+            Partial class containing serial connection logic for the main application window.
+            </summary>
+            <summary>
+            Partial class containing persistence logic for user settings in the main window.
+            </summary>
+            <summary>
+            Represents the main window logic for theme handling in the application.
+            </summary>
+            <summary>
+            Partial class for the main application window, responsible for handling tray icon behavior,
+            window visibility toggling, and application exit logic.
+            </summary>
+        </member>
+        <member name="F:SerialVolumeControl.MainWindow._appComboBoxes">
+            <summary>
+            The list of ComboBoxes for application selection per slider.
+            </summary>
+        </member>
+        <member name="F:SerialVolumeControl.MainWindow._volumeSliders">
+            <summary>
+            The list of sliders that control volume levels.
+            </summary>
+        </member>
+        <member name="F:SerialVolumeControl.MainWindow._sliderAppAssignments">
+            <summary>
+            Maps each slider index to its assigned application.
+            </summary>
+        </member>
+        <member name="F:SerialVolumeControl.MainWindow._reader">
+            <summary>
+            Serial reader instance for handling communication with the hardware.
+            </summary>
+        </member>
+        <member name="F:SerialVolumeControl.MainWindow._savedAppVolumes">
+            <summary>
+            Stores saved volume levels for each application.
+            </summary>
+        </member>
+        <member name="F:SerialVolumeControl.MainWindow._lastComPort">
+            <summary>
+            The last used COM port.
+            </summary>
+        </member>
+        <member name="F:SerialVolumeControl.MainWindow._sliderAppAssignmentsList">
+            <summary>
+            Stores assignments for each slider from previous sessions.
+            </summary>
+        </member>
+        <member name="F:SerialVolumeControl.MainWindow._themeToggle">
+            <summary>
+            Reference to the UI toggle button for switching between light and dark themes.
+            </summary>
+        </member>
+        <member name="F:SerialVolumeControl.MainWindow._isDarkMode">
+            <summary>
+            Indicates whether the current theme is dark mode.
+            </summary>
+        </member>
+        <member name="F:SerialVolumeControl.MainWindow._trayIcon">
+            <summary>
+            The system tray icon for the application.
+            </summary>
+        </member>
+        <member name="F:SerialVolumeControl.MainWindow._trayMenu">
+            <summary>
+            The context menu associated with the system tray icon.
+            </summary>
+        </member>
+        <member name="F:SerialVolumeControl.MainWindow._isExitRequested">
+            <summary>
+            Indicates whether an exit request has been made (used to prevent redundant actions on shutdown).
+            </summary>
+        </member>
+        <member name="M:SerialVolumeControl.MainWindow.#ctor">
+            <summary>
+            Initializes a new instance of the <see cref="T:SerialVolumeControl.MainWindow"/> class.
+            Sets up the UI, loads saved settings, initializes controls and hardware communication.
+            </summary>
+        </member>
+        <member name="M:SerialVolumeControl.MainWindow.Connect">
+            <summary>
+            Establishes a connection to the selected serial port.
+            </summary>
+            <remarks>
+            Retrieves UI elements by name, connects to the selected COM port via the internal serial reader,
+            updates UI controls accordingly, and saves the current settings.
+            </remarks>
+        </member>
+        <member name="M:SerialVolumeControl.MainWindow.Disconnect">
+            <summary>
+            Terminates the existing serial port connection.
+            </summary>
+            <remarks>
+            Calls the disconnect method on the serial reader, re-enables relevant UI controls,
+            and persists the settings.
+            </remarks>
+        </member>
+        <member name="M:SerialVolumeControl.MainWindow.SaveSettings">
+            <summary>
+            Saves user settings such as last selected COM port, volume mappings, slider assignments,
+            and theme preference to a JSON file on disk.
+            </summary>
+            <remarks>
+            This method serializes the <see cref="T:SerialVolumeControl.Models.UserSettings"/> object to a JSON string and writes it
+            to the file specified by <c>SettingsFile</c>. Exceptions are caught and logged to the console.
+            </remarks>
+        </member>
+        <member name="M:SerialVolumeControl.MainWindow.LoadSettings">
+            <summary>
+            Loads user settings from a JSON file and restores them into the application state.
+            </summary>
+            <remarks>
+            If the settings file exists, it is read and deserialized into a <see cref="T:SerialVolumeControl.Models.UserSettings"/> object.
+            Values such as the last used COM port, volume mappings, slider assignments, and theme preference
+            are restored. Default values are applied when data is missing.
+            </remarks>
+        </member>
+        <member name="M:SerialVolumeControl.MainWindow.SetAutoStart(System.Boolean)">
+             <summary>
+             Enables or disables automatic startup of the application when the system starts,
+             depending on the operating system (Windows, Linux, or macOS).
+             </summary>
+             <param name="enable">
+             If <c>true</c>, configures the system to start the application on login/startup;
+             if <c>false</c>, removes the auto-start configuration.
+             </param>
+             <remarks>
+             - **Windows**: Creates or removes a shortcut (.lnk) in the user's Startup folder.
+             - **Linux**: Writes or deletes a .desktop file in ~/.config/autostart.
+             - **macOS**: Creates or removes a LaunchAgent .plist file in ~/Library/LaunchAgents.
+            
+             Errors during file or shortcut creation are caught and logged to the console.
+             </remarks>
+             <example>
+             Enable auto-start:
+             <code>
+             SetAutoStart(true);
+             </code>
+             Disable auto-start:
+             <code>
+             SetAutoStart(false);
+             </code>
+             </example>
+             <exception cref="T:System.Exception">
+             Thrown if WScript.Shell is not available on Windows when trying to create the shortcut.
+             </exception>
+        </member>
+        <member name="M:SerialVolumeControl.MainWindow.SetTheme(System.Boolean)">
+            <summary>
+            Applies the selected theme (light or dark) to the application and saves the user's preference.
+            </summary>
+            <param name="isDark">Indicates whether the dark theme should be applied. If <c>true</c>, the dark theme is set; otherwise, the light theme is used.</param>
+            <remarks>
+            This method updates the <see cref="P:Avalonia.Application.RequestedThemeVariant"/> and persists the change using <c>SaveSettings()</c>.
+            </remarks>
+        </member>
+        <member name="M:SerialVolumeControl.MainWindow.SetupThemeToggle">
+            <summary>
+            Configures the toggle control used to switch between dark and light themes.
+            </summary>
+            <remarks>
+            This method initializes the toggle state based on the current theme preference
+            and wires up an event handler to respond to user interaction.
+            </remarks>
+        </member>
+        <member name="M:SerialVolumeControl.MainWindow.SetupTrayIcon">
+            <summary>
+            Initializes the system tray icon with a menu that includes
+            "Show/Hide" and "Exit" actions. Handles click events for toggling window visibility.
+            </summary>
+            <remarks>
+            - Sets the tray icon with a tooltip and icon image.
+            - Handles menu item clicks to control application behavior.
+            - Errors during setup are caught and logged to the console.
+            </remarks>
+        </member>
+        <member name="M:SerialVolumeControl.MainWindow.ToggleWindowVisibility">
+            <summary>
+            Toggles the visibility of the main application window.
+            </summary>
+            <remarks>
+            - If the window is hidden or minimized, it will be shown and brought to the foreground.
+            - If the window is currently visible, it will be hidden.
+            </remarks>
+        </member>
+        <member name="M:SerialVolumeControl.MainWindow.ExitApp">
+            <summary>
+            Cleans up and exits the application when the "Exit" tray menu item is clicked.
+            </summary>
+            <remarks>
+            - Sets a flag to allow window closing.
+            - Disposes the tray icon.
+            - Closes the window/application.
+            </remarks>
+        </member>
+        <member name="M:SerialVolumeControl.MainWindow.OnClosing(Avalonia.Controls.WindowClosingEventArgs)">
+            <summary>
+            Overrides the window closing event to implement "minimize to tray" behavior.
+            </summary>
+            <param name="e">The event data.</param>
+            <remarks>
+            - If the exit flag is not set, the window is hidden instead of being closed.
+            - If the exit flag is set, the application exits normally.
+            </remarks>
+        </member>
+        <member name="M:SerialVolumeControl.MainWindow.InitializeComboBoxesAndSliders">
+            <summary>
+            Initializes the ComboBoxes and Sliders used for volume control,
+            and adds them to their respective internal lists.
+            </summary>
+            <remarks>
+            - Finds controls named "AppComboBox1" to "AppComboBox5" and adds them to <c>_appComboBoxes</c>.
+            - Finds controls named "VolumeSlider1" to "VolumeSlider5" and adds them to <c>_volumeSliders</c>.
+            </remarks>
+        </member>
+        <member name="M:SerialVolumeControl.MainWindow.InitializePortControls">
+            <summary>
+            Initializes the serial port ComboBox and connect/disconnect buttons,
+            and binds event handlers to their click events.
+            </summary>
+            <remarks>
+            - Populates the "PortComboBox" with available COM port names.
+            - Sets up click handlers for "ConnectButton" and "DisconnectButton".
+            </remarks>
+        </member>
+        <member name="M:SerialVolumeControl.MainWindow.InitializeDropdowns">
+            <summary>
+            Populates all application ComboBoxes with process options,
+            including special entries for focused app and master volume.
+            </summary>
+            <remarks>
+            - Uses <see cref="M:SerialVolumeControl.Helpers.ProcessHelper.GetProcessNames"/> to get the list of running processes.
+            - Adds predefined options from <see cref="T:SerialVolumeControl.Helpers.AppConstants"/>.
+            - Applies the CSS class <c>app-combobox</c> to each ComboBox.
+            </remarks>
+        </member>
+        <member name="M:SerialVolumeControl.MainWindow.InitializeSliderAssignments">
+            <summary>
+            Assigns applications to sliders based on saved assignments, sets their initial volumes,
+            and attaches change listeners to handle user interactions.
+            </summary>
+            <remarks>
+            - Matches saved app assignments to UI elements.
+            - Sets initial volume levels using <see cref="T:SerialVolumeControl.Services.VolumeService"/>.
+            - Updates volume when ComboBox selection or Slider value changes.
+            - Supports "Master Volume", "Focused App", and regular process-based volume control.
+            - Persists changes to saved settings.
+            </remarks>
+        </member>
+        <member name="M:SerialVolumeControl.MainWindow.InitializeComponent(System.Boolean,System.Boolean)">
+            <summary>
+            Wires up the controls and optionally loads XAML markup and attaches dev tools (if Avalonia.Diagnostics package is referenced).
+            </summary>
+            <param name="loadXaml">Should the XAML be loaded into the component.</param>
+            <param name="attachDevTools">Should the dev tools be attached.</param>
+        </member>
+        <member name="T:SerialVolumeControl.Models.UserSettings">
+            <summary>
+            Represents user-configurable settings for the SerialVolumeControl application.
+            </summary>
+        </member>
+        <member name="P:SerialVolumeControl.Models.UserSettings.LastComPort">
+            <summary>
+            Gets or sets the last used COM port identifier (e.g., "COM3").
+            </summary>
+        </member>
+        <member name="P:SerialVolumeControl.Models.UserSettings.AppVolumes">
+            <summary>
+            Gets or sets a dictionary mapping application names to their last known volume levels.
+            The key is the application name or identifier, and the value is the volume level (0.0 to 1.0).
+            </summary>
+        </member>
+        <member name="P:SerialVolumeControl.Models.UserSettings.SliderAppAssignments">
+            <summary>
+            Gets or sets a list of slider-to-application assignments.
+            Each item corresponds to a slider index, and its value is the assigned application name or a special option.
+            </summary>
+        </member>
+        <member name="P:SerialVolumeControl.Models.UserSettings.IsDarkMode">
+            <summary>
+            Gets or sets a value indicating whether dark mode is enabled in the UI.
+            </summary>
+        </member>
+        <member name="T:SerialVolumeControl.Services.ScreenBrightnessService">
+            <summary>
+            Provides methods to get and set the screen brightness on Windows systems using WMI.
+            </summary>
+        </member>
+        <member name="M:SerialVolumeControl.Services.ScreenBrightnessService.GetBrightness">
+            <summary>
+            Retrieves the current screen brightness percentage.
+            </summary>
+            <returns>
+            An integer representing the current brightness level (0–100).
+            Returns 100 if not running on Windows or if retrieval fails.
+            </returns>
+        </member>
+        <member name="M:SerialVolumeControl.Services.ScreenBrightnessService.SetBrightness(System.Int32)">
+            <summary>
+            Sets the screen brightness to the specified level.
+            </summary>
+            <param name="brightness">
+            An integer between 0 and 100 representing the desired brightness level.
+            </param>
+            <remarks>
+            Only works on Windows systems where WMI access to monitor brightness is available.
+            Does nothing if called on a non-Windows platform or if an error occurs.
+            </remarks>
+        </member>
+        <member name="T:SerialVolumeControl.Services.SerialReader">
+            <summary>
+            Reads and processes serial data from a connected device, such as a volume slider.
+            </summary>
+            <remarks>
+            The class connects to a serial port, reads incoming data, and raises events when valid slider messages are received.
+            </remarks>
+        </member>
+        <member name="E:SerialVolumeControl.Services.SerialReader.SliderChanged">
+            <summary>
+            Event that is triggered when a slider value changes.
+            </summary>
+            <remarks>
+            The event provides the slider index and its new value.
+            </remarks>
+        </member>
+        <member name="M:SerialVolumeControl.Services.SerialReader.Connect(System.String,System.Int32)">
+            <summary>
+            Connects to the specified serial port and starts listening for data.
+            </summary>
+            <param name="portName">The name of the serial port to connect to (e.g., "COM3").</param>
+            <param name="baudRate">The baud rate for the connection. Default is 9600.</param>
+            <example>
+            <code>
+            var reader = new SerialReader();
+            reader.Connect("COM3", 115200);
+            </code>
+            </example>
+        </member>
+        <member name="M:SerialVolumeControl.Services.SerialReader.OnDataReceived(System.Object,System.IO.Ports.SerialDataReceivedEventArgs)">
+            <summary>
+            Handles incoming serial data and accumulates lines for processing.
+            </summary>
+            <param name="sender">The source of the event.</param>
+            <param name="e">Event arguments containing data information.</param>
+        </member>
+        <member name="M:SerialVolumeControl.Services.SerialReader.ProcessLines(System.Object)">
+            <summary>
+            Processes received lines and triggers the <see cref="E:SerialVolumeControl.Services.SerialReader.SliderChanged"/> event when a valid slider message is parsed.
+            </summary>
+            <param name="state">Unused timer state object.</param>
+        </member>
+        <member name="M:SerialVolumeControl.Services.SerialReader.Disconnect">
+            <summary>
+            Disconnects from the serial port and releases all resources.
+            </summary>
+            <example>
+            <code>
+            reader.Disconnect();
+            </code>
+            </example>
+        </member>
+        <member name="P:SerialVolumeControl.Services.SerialReader.IsConnected">
+            <summary>
+            Gets a value indicating whether the serial port is currently connected and open.
+            </summary>
+        </member>
+        <member name="T:SerialVolumeControl.Services.VolumeService">
+            <summary>
+            Provides functionality to get and set volume levels for specific applications and the system master volume.
+            </summary>
+        </member>
+        <member name="M:SerialVolumeControl.Services.VolumeService.SetAppVolume(System.String,System.Single)">
+            <summary>
+            Sets the volume level for a specific application's audio session.
+            </summary>
+            <param name="appName">The name of the application (process name, case-insensitive) to modify volume for.</param>
+            <param name="volume">The desired volume level between 0.0 (mute) and 1.0 (max).</param>
+        </member>
+        <member name="M:SerialVolumeControl.Services.VolumeService.GetAppVolume(System.String)">
+            <summary>
+            Retrieves the current volume level of a specific application's audio session.
+            </summary>
+            <param name="appName">The name of the application (process name, case-insensitive) to retrieve volume for.</param>
+            <returns>The volume level between 0.0 and 1.0, or -1 if the application is not found or an error occurs.</returns>
+        </member>
+        <member name="M:SerialVolumeControl.Services.VolumeService.SetMasterVolume(System.Single)">
+            <summary>
+            Sets the master (system-wide) volume level.
+            </summary>
+            <param name="volume">The desired volume level between 0.0 (mute) and 1.0 (max).</param>
+        </member>
+        <member name="M:SerialVolumeControl.Services.VolumeService.GetMasterVolume">
+            <summary>
+            Retrieves the current master (system-wide) volume level.
+            </summary>
+            <returns>The volume level between 0.0 and 1.0, or -1 if an error occurs.</returns>
+        </member>
+    </members>
+</doc>

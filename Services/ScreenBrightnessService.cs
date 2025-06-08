@@ -4,6 +4,9 @@ using System.Runtime.InteropServices;
 
 namespace SerialVolumeControl.Services
 {
+    /// <summary>
+    /// Provides methods to get and set the screen brightness on Windows systems using WMI.
+    /// </summary>
     public static class ScreenBrightnessService
     {
         /// <summary>
@@ -16,7 +19,7 @@ namespace SerialVolumeControl.Services
         public static int GetBrightness()
         {
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                return 100; 
+                return 100;
 
             try
             {
@@ -27,10 +30,13 @@ namespace SerialVolumeControl.Services
                     return (byte)((ManagementObject)instance)["CurrentBrightness"];
                 }
             }
-            catch { }
+            catch
+            {
+                // Suppress errors and return default brightness
+            }
+
             return 100;
         }
-
 
         /// <summary>
         /// Sets the screen brightness to the specified level.
@@ -57,7 +63,21 @@ namespace SerialVolumeControl.Services
                     ((ManagementObject)instance).InvokeMethod("WmiSetBrightness", args);
                 }
             }
-            catch { }
+            catch (ManagementException mex)
+            {
+                // Log or handle WMI-specific errors if needed
+                System.Diagnostics.Debug.WriteLine($"WMI error in SetBrightness: {mex.Message}");
+            }
+            catch (UnauthorizedAccessException uex)
+            {
+                // Log or handle permission errors
+                System.Diagnostics.Debug.WriteLine($"Access denied in SetBrightness: {uex.Message}");
+            }
+            catch (Exception ex)
+            {
+                // Log or handle any other errors
+                System.Diagnostics.Debug.WriteLine($"Unexpected error in SetBrightness: {ex.Message}");
+            }
         }
     }
 }
