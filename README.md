@@ -8,6 +8,7 @@ SerialVolumeControl is a cross-platform desktop application that lets you contro
 
 - **Physical Slider Control:** Map up to 5 hardware sliders to specific applications.
 - **Per-App Volume:** Adjust the volume of each app independently.
+- **Screen Brightness adjustment** Adjust the brightness of all the monitors at the same time.
 - **Persistent Settings:** Remembers your app-slider assignments, volumes, and last used COM port.
 - **Cross-Platform UI:** Built with Avalonia for a modern look and feel.
 - **Auto-Reconnect:** Automatically reconnects to the last used COM port if available.
