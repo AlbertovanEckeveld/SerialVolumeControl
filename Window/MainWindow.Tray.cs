@@ -1,6 +1,5 @@
 using System;
 using Avalonia.Controls;
-using Avalonia.Extensions.Controls;
 
 namespace SerialVolumeControl
 {
@@ -37,7 +36,7 @@ namespace SerialVolumeControl
 
                 _trayIcon = new TrayIcon
                 {
-                    Icon = new WindowIcon("Assets/mixer.ico"), // Zorg dat dit icoon bestaat en wordt gekopieerd naar output
+                    Icon = new WindowIcon("Assets/mixer.ico"),
                     ToolTipText = "SerialVolumeControl",
                     Menu = _trayMenu
                 };
@@ -48,7 +47,7 @@ namespace SerialVolumeControl
             {
                 Console.WriteLine("Tray icon setup failed: " + ex);
             }
-        }
+        } 
 
         /// <summary>
         /// Toggles the visibility of the main application window.

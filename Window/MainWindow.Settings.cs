@@ -7,6 +7,8 @@ using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using System.Diagnostics;
+
 
 namespace SerialVolumeControl
 {
@@ -103,7 +105,7 @@ namespace SerialVolumeControl
         /// </exception>
         public static void SetAutoStart(bool enable)
         {
-            string exePath = Assembly.GetEntryAssembly()!.Location;
+            string exePath = Process.GetCurrentProcess().MainModule!.FileName!; 
             string appName = "SerialVolumeControl";
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))

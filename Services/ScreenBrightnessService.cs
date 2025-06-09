@@ -1,26 +1,90 @@
 using System;
-using System.Management;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
+using System.Management;
 
 namespace SerialVolumeControl.Services
 {
     /// <summary>
-    /// Provides methods to get and set the screen brightness on Windows systems using WMI.
+    /// Provides methods to get and set the screen brightness on all monitors (DDC/CI for extern, WMI for intern).
     /// </summary>
     public static class ScreenBrightnessService
     {
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+        private struct PHYSICAL_MONITOR
+        {
+            public IntPtr hPhysicalMonitor;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+            public string szPhysicalMonitorDescription;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT
+        {
+            public int left, top, right, bottom;
+        }
+
+        private delegate bool MonitorEnumProc(IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr lprcClip, MonitorEnumProc lpfnEnum, IntPtr dwData);
+
+        [DllImport("dxva2.dll", SetLastError = true)]
+        private static extern bool GetNumberOfPhysicalMonitorsFromHMONITOR(IntPtr hMonitor, out uint pdwNumberOfPhysicalMonitors);
+
+        [DllImport("dxva2.dll", SetLastError = true)]
+        private static extern bool GetPhysicalMonitorsFromHMONITOR(IntPtr hMonitor, uint dwPhysicalMonitorArraySize, [Out] PHYSICAL_MONITOR[] pPhysicalMonitorArray);
+
+        [DllImport("dxva2.dll", SetLastError = true)]
+        private static extern bool DestroyPhysicalMonitors(uint dwPhysicalMonitorArraySize, [In] PHYSICAL_MONITOR[] pPhysicalMonitorArray);
+
+        [DllImport("dxva2.dll", SetLastError = true)]
+        private static extern bool GetMonitorBrightness(IntPtr hMonitor, out uint pdwMinimumBrightness, out uint pdwCurrentBrightness, out uint pdwMaximumBrightness);
+
+        [DllImport("dxva2.dll", SetLastError = true)]
+        private static extern bool SetMonitorBrightness(IntPtr hMonitor, uint dwNewBrightness);
+
         /// <summary>
-        /// Retrieves the current screen brightness percentage.
+        /// Gets the average brightness of all monitors (internal + external).
         /// </summary>
-        /// <returns>
-        /// An integer representing the current brightness level (0–100).
-        /// Returns 100 if not running on Windows or if retrieval fails.
-        /// </returns>
         public static int GetBrightness()
         {
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 return 100;
 
+            // Probeer eerst interne (WMI) helderheid
+            int? wmiBrightness = TryGetInternalBrightness();
+            // Probeer externe (DDC/CI) helderheid
+            int? ddcBrightness = TryGetDdcBrightness();
+
+            if (wmiBrightness.HasValue && ddcBrightness.HasValue)
+                return (wmiBrightness.Value + ddcBrightness.Value) / 2;
+            if (wmiBrightness.HasValue)
+                return wmiBrightness.Value;
+            if (ddcBrightness.HasValue)
+                return ddcBrightness.Value;
+            return 100;
+        }
+
+        /// <summary>
+        /// Sets the brightness of all monitors (internal + external).
+        /// </summary>
+        public static void SetBrightness(int brightness)
+        {
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                return;
+
+            // Zet interne (laptop) schermen via WMI
+            TrySetInternalBrightness(brightness);
+
+            // Zet externe schermen via DDC/CI
+            SetDdcBrightness(brightness);
+        }
+
+        // --- Interne schermen (WMI) ---
+        private static int? TryGetInternalBrightness()
+        {
             try
             {
                 using var mclass = new ManagementClass("WmiMonitorBrightness");
@@ -30,54 +94,103 @@ namespace SerialVolumeControl.Services
                     return (byte)((ManagementObject)instance)["CurrentBrightness"];
                 }
             }
-            catch
-            {
-                // Suppress errors and return default brightness
-            }
-
-            return 100;
+            catch { }
+            return null;
         }
 
-        /// <summary>
-        /// Sets the screen brightness to the specified level.
-        /// </summary>
-        /// <param name="brightness">
-        /// An integer between 0 and 100 representing the desired brightness level.
-        /// </param>
-        /// <remarks>
-        /// Only works on Windows systems where WMI access to monitor brightness is available.
-        /// Does nothing if called on a non-Windows platform or if an error occurs.
-        /// </remarks>
-        public static void SetBrightness(int brightness)
+        private static void TrySetInternalBrightness(int brightness)
         {
-            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                return;
-
             try
             {
                 using var mclass = new ManagementClass("WmiMonitorBrightnessMethods");
                 mclass.Scope = new ManagementScope(@"\\.\root\wmi");
                 foreach (var instance in mclass.GetInstances())
                 {
-                    var args = new object[] { 1, (byte)brightness };
-                    ((ManagementObject)instance).InvokeMethod("WmiSetBrightness", args);
+                    if (instance is ManagementObject mo)
+                    {
+                        var args = new object[] { 1, (byte)brightness };
+                        mo.InvokeMethod("WmiSetBrightness", args);
+                    }
                 }
             }
-            catch (ManagementException mex)
+            catch { }
+        }
+
+        // --- Externe schermen (DDC/CI) ---
+        private static int? TryGetDdcBrightness()
+        {
+            var allMonitors = GetAllPhysicalMonitors();
+            int total = 0, count = 0;
+
+            foreach (var mon in allMonitors)
             {
-                // Log or handle WMI-specific errors if needed
-                System.Diagnostics.Debug.WriteLine($"WMI error in SetBrightness: {mex.Message}");
+                try
+                {
+                    if (GetMonitorBrightness(mon.hPhysicalMonitor, out uint min, out uint current, out uint max) && max > min)
+                    {
+                        int percent = (int)((current - min) * 100 / (max - min));
+                        total += percent;
+                        count++;
+                    }
+                }
+                catch { }
             }
-            catch (UnauthorizedAccessException uex)
+            DestroyAllPhysicalMonitors(allMonitors);
+
+            return count > 0 ? total / count : (int?)null;
+        }
+
+        private static void SetDdcBrightness(int brightness)
+        {
+            var allMonitors = GetAllPhysicalMonitors();
+            Parallel.ForEach(allMonitors, new ParallelOptions { MaxDegreeOfParallelism = 4 }, mon =>
             {
-                // Log or handle permission errors
-                System.Diagnostics.Debug.WriteLine($"Access denied in SetBrightness: {uex.Message}");
-            }
-            catch (Exception ex)
+                try
+                {
+                    if (GetMonitorBrightness(mon.hPhysicalMonitor, out uint min, out uint current, out uint max) && max > min)
+                    {
+                        uint newValue = (uint)(min + (brightness * (max - min) / 100));
+                        SetMonitorBrightness(mon.hPhysicalMonitor, newValue);
+                    }
+                }
+                catch { }
+            });
+            DestroyAllPhysicalMonitors(allMonitors);
+        }
+
+        private static List<PHYSICAL_MONITOR> GetAllPhysicalMonitors()
+        {
+            var result = new List<PHYSICAL_MONITOR>();
+            MonitorEnumProc proc = (IntPtr hMonitor, IntPtr hdc, ref RECT rect, IntPtr data) =>
             {
-                // Log or handle any other errors
-                System.Diagnostics.Debug.WriteLine($"Unexpected error in SetBrightness: {ex.Message}");
+                try
+                {
+                    if (GetNumberOfPhysicalMonitorsFromHMONITOR(hMonitor, out uint num) && num > 0)
+                    {
+                        var monitors = new PHYSICAL_MONITOR[num];
+                        if (GetPhysicalMonitorsFromHMONITOR(hMonitor, num, monitors))
+                        {
+                            result.AddRange(monitors);
+                        }
+                    }
+                }
+                catch { }
+                return true;
+            };
+            EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, proc, IntPtr.Zero);
+            return result;
+        }
+
+        private static void DestroyAllPhysicalMonitors(List<PHYSICAL_MONITOR> monitors)
+        {
+            if (monitors == null || monitors.Count == 0)
+                return;
+            try
+            {
+                var arr = monitors.ToArray();
+                DestroyPhysicalMonitors((uint)arr.Length, arr);
             }
+            catch { }
         }
     }
 }

@@ -1,17 +1,18 @@
-using System;
-using System.Linq;
-using System.Collections.Generic;
-
 using Avalonia.Controls;
-
 using SerialVolumeControl.Helpers;
 using SerialVolumeControl.Services;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 
 namespace SerialVolumeControl
 {
     public partial class MainWindow
     {
+        private CancellationTokenSource? _brightnessCts;
         /// <summary>
         /// Initializes the ComboBoxes and Sliders used for volume control,
         /// and adds them to their respective internal lists.
@@ -200,7 +201,7 @@ namespace SerialVolumeControl
                             }
                             else if (selectedApp == AppConstants.ScreenBrightnessOption)
                             {
-                                ScreenBrightnessService.SetBrightness((int)_volumeSliders[index].Value);
+                                OnBrightnessSliderChanged((int)_volumeSliders[index].Value);
                             }
                             else
                             {
@@ -215,6 +216,25 @@ namespace SerialVolumeControl
 
                 _sliderAppAssignments[index] = null;
             }
+        }
+        private void OnBrightnessSliderChanged(double value)
+        {
+            // Cancel any pending brightness set
+            _brightnessCts?.Cancel();
+            _brightnessCts = new CancellationTokenSource();
+            var token = _brightnessCts.Token;
+            int brightness = (int)value;
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    // Debounce: wait 100ms, only apply if not cancelled
+                    await Task.Delay(100, token);
+                    ScreenBrightnessService.SetBrightness(brightness);
+                }
+                catch (TaskCanceledException) { }
+            }, token);
         }
     }
 }
